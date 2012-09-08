@@ -1,0 +1,31 @@
+.TH WAITPID 1  "September 2012" "waitpid 0.0.1" "User Commands"
+.SH NAME
+waitpid \- wait for process termination
+.SH SYNOPSIS
+.B waitpid
+[\fIOPTION\fR]... \fIPID\fR
+.SH DESCRIPTION
+.B waitpid
+exits as soon as the traced process exits. The exit status will be the same of
+the traced process.
+.PP
+.B waitpid
+makes use of the PTRACE system call. On most systems, this call is limited to
+the root user. See /etc/sysctl.d/10-ptrace.conf for more information.
+.SH OPTIONS
+.TP 14
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+display an help message and exit
+.TP
+\fB\-v\fR, \fB\-\-version\fR
+display version information and exit
+.SH EXIT STATUS
+If no errors occour,
+.B waitpid
+exits with the same status of the traced process. If a system call fails, the
+exit status is 255. If the usage is wrong, the exit status is 254.
+.SH "REPORTING BUGS"
+Report bugs to https://github.com/andrea-corbellini/waitpid
+.SH AUTHOR
+Andrea Corbellini <corbellini.andrea@gmail.com>
