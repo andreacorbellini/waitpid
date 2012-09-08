@@ -1,0 +1,15 @@
+*.cache
+*.in
+*.log
+*.m4
+*.o
+*.status
+.deps
+config.h
+configure
+depcomp
+install-sh
+Makefile
+missing
+stamp-*
+waitpid
