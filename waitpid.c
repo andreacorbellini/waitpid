@@ -1,4 +1,4 @@
-/**
+/*
  * waitpid - wait for process termination
  * Copyright (C) 2012  Andrea Corbellini <corbellini.andrea@gmail.com>
  *
@@ -16,38 +16,73 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define _GNU_SOURCE
-
 #include <config.h>
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
-#include <errno.h>
-#include <err.h>
 
 #include <sys/ptrace.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
-static void
-show_usage (int status)
-{
-  printf ("Usage: %s [OPTION]... PID", program_invocation_short_name);
-  putc ('\n', stdout);
+#include <errno.h>
+#include <limits.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
-  if (status) {
-    printf ("Try `%s --help' for more information.", program_invocation_name);
-    putc ('\n', stdout);
-    exit (status);
+#ifndef GCC
+# define __attribute__(x)
+#endif
+
+static inline void __attribute__ ((noreturn))
+vfail (const char *format, va_list ap)
+{
+  int errsv;
+  const char *errfmt;
+
+  errsv = errno;
+
+  fflush (stdout);
+
+  if (format) {
+    fputs ("error: ", stderr);
+    vfprintf (stderr, format, ap);
+    errfmt = ": %s";
   }
+  else {
+    errfmt = "error: %s";
+  }
+
+  if (errsv)
+    fprintf (stderr, errfmt, strerror (errsv));
+
+  fputc ('\n', stderr);
+  fflush (stderr);
+
+  exit (CHAR_MAX);
+}
+
+static inline void __attribute__ ((noreturn))
+fail (const char *format, ...)
+{
+  va_list ap;
+
+  va_start (ap, format);
+  vfail (format, ap);
+  /* It does not make any sense to call va_end() given that we will never reach
+     this point. */
 }
 
 static void
-show_help (void)
+show_usage (const char *program_name)
 {
-  show_usage (0);
+  printf ("Usage: %s [OPTION]... PID", program_name);
+  putc ('\n', stdout);
+}
+
+static void __attribute__ ((noreturn))
+show_help (const char *program_name)
+{
+  show_usage (program_name);
 
   puts ("\
 Wait for process termination.\n\
@@ -71,11 +106,21 @@ Options:\n\
   exit (0);
 }
 
-static void
+static void __attribute__ ((noreturn))
 show_version (void)
 {
   puts (PACKAGE_STRING);
   exit (0);
+}
+
+static void __attribute__ ((noreturn))
+show_invalid_usage (const char *program_name)
+{
+  show_usage (program_name);
+
+  printf ("Try `%s --help' for more information.", program_name);
+  putc ('\n', stdout);
+  fail (NULL);
 }
 
 static pid_t
@@ -90,10 +135,11 @@ parse_pid_string (const char *str)
   n = strtol (str, &end, 10);
   pid = (pid_t)n;
 
-  if (*end != '\0' || errno == ERANGE || n != (long)pid) {
-    err (-2, "error: invalid pid: %s\n", str);
-    exit (-2);
-  }
+  if (errno && errno != ERANGE)
+    fail ("strtol");
+
+  if (errno == ERANGE || *end != '\0' || n != (long)pid)
+    fail ("error: invalid pid: %s\n", str);
 
   return pid;
 }
@@ -108,14 +154,16 @@ main (int argc, char **argv)
 
   for (i = 1; i < argc; i++) {
     if (strcmp (argv[i], "-h") == 0 || strcmp (argv[i], "--help") == 0)
-      show_help ();
+      show_help (argv[0]);
 
     if (strcmp (argv[i], "-v") == 0 || strcmp (argv[i], "--version") == 0)
       show_version ();
   }
 
-  if (argc != 2)
-    show_usage (-2);
+  if (argc != 2) {
+    show_usage (argv[0]);
+    fail ("expected 2 arguments, got %d", argc);
+  }
 
   pid_string = argv[1];
   pid = parse_pid_string (pid_string);
