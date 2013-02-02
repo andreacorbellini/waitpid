@@ -1,3 +1,13 @@
+.de CW
+.sp
+.nf
+.ft CW
+..
+.de CE
+.ft R
+.fi
+.sp
+..
 .TH WAITPID 1  "February 2013" "waitpid 0.0.2" "User Commands"
 .SH NAME
 waitpid \- wait for process termination
@@ -7,15 +17,44 @@ waitpid \- wait for process termination
 .SH DESCRIPTION
 .B waitpid
 traces the execution of the processes with the
-given PIDs. It will exit as soon as all the
-traced processes have terminated.
+given PIDs and exits as soon as all the traced
+processes have terminated.
 .PP
 When the
-.B --verbose
+.B \-\-verbose
 option is specified,
 .B waitpid
 prints information about the signals received by
 the traced processes and their exit statuses.
+Here is an example output that could be produced
+by the command ``waitpid \-v 5060'':
+.CW
+    attached to 5060
+    received SIGSTOP: Stopped (signal)
+    received SIGCONT: Continued
+    received SIGINT: Interrupt
+    exited (status 0)
+.CE
+If instead of exiting normally, the process has
+been killed by a signal, the output would be:
+.CW
+    attached to 5060
+    received SIGSTOP: Stopped
+    received SIGCONT: Continued
+    received SIGSEGV: Segmentation fault
+    killed by SIGSEGV (core dumped)
+.CE
+When multiple PIDs are given, each line is
+prefixed by the PID the event belongs to.
+Here is an example output that could be produced
+by the command ``waitpid \-v 5060 8090'':
+.CW
+    [5060] attached to 5060
+    [8090] attached to 8090
+    [8090] received SIGINT: Interrupt
+    [8090] killed by SIGINT
+    [5060] exited (status 2)
+.CE
 .SH OPTIONS
 .TP 14
 .TP
