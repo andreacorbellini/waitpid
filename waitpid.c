@@ -274,7 +274,7 @@ main (int argc, char **argv)
       fail ("wait");
 
     if (verbose && pid_count > 1)
-      printf ("[%ld]  ", (long)pid);
+      printf ("[%ld] ", (long)pid);
 
     if (WIFEXITED (status)) {
       active_proc_count--;
@@ -290,13 +290,14 @@ main (int argc, char **argv)
       exit_status = signal | 0x80;
 
       if (verbose)
-        printf ("killed by %s (%s)\n", signame (signal), strsignal (signal));
+        printf ("killed by %s%s\n", signame (signal),
+                WCOREDUMP (status) ? " (core dumped)" : "");
     }
     else if (WIFSTOPPED (status)) {
       signal = WSTOPSIG (status);
 
       if (verbose)
-        printf ("received %s (%s)\n", signame (signal), strsignal (signal));
+        printf ("received %s: %s\n", signame (signal), strsignal (signal));
     }
     else
       abort ();
