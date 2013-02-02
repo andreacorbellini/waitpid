@@ -16,181 +16,295 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
+#include "waitpid.h"
 
-#include <sys/ptrace.h>
-#include <sys/types.h>
-#include <sys/wait.h>
+static const char *program_name;
 
-#include <errno.h>
-#include <limits.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
-#ifndef GCC
-# define __attribute__(x)
-#endif
-
-static inline void __attribute__ ((noreturn))
+static inline void
 vfail (const char *format, va_list ap)
 {
   int errsv;
-  const char *errfmt;
 
+  /* Save the value of `errno'. We will be doing some I/O, thus there is
+     probability that `errno' will change. */
   errsv = errno;
 
   fflush (stdout);
 
+  /* Output an error message in one of the following formats (depending on the
+     value of `format' and `errsv'):
+
+     "error: <custom message>\n"
+     "error: <error string>\n"
+     "error: <custom message>: <error string>\n"
+     ""
+
+     The last one is used in case both `format' and `errsv' are zero. */
+
   if (format) {
     fputs ("error: ", stderr);
     vfprintf (stderr, format, ap);
-    errfmt = ": %s";
+    if (errsv)
+      fprintf (stderr, ": %s\n", strerror (errsv));
+    else
+      fputc ('\n', stderr);
   }
   else {
-    errfmt = "error: %s";
+    if (errsv)
+      fprintf (stderr, "error: %s\n", strerror (errsv));
   }
 
-  if (errsv)
-    fprintf (stderr, errfmt, strerror (errsv));
-
-  fputc ('\n', stderr);
   fflush (stderr);
-
-  exit (CHAR_MAX);
 }
 
-static inline void __attribute__ ((noreturn))
+static inline void __noreturn
 fail (const char *format, ...)
 {
   va_list ap;
 
   va_start (ap, format);
   vfail (format, ap);
-  /* It does not make any sense to call va_end() given that we will never reach
-     this point. */
+  va_end (ap);
+
+  exit (EXIT_FAILURE);
+}
+
+static inline void
+warn (const char *format, ...)
+{
+  va_list ap;
+
+  va_start (ap, format);
+  vfail (format, ap);
+  va_end (ap);
 }
 
 static void
-show_usage (const char *program_name)
+show_usage (void)
 {
-  printf ("Usage: %s [OPTION]... PID", program_name);
-  putc ('\n', stdout);
+  printf ("Usage: %s [OPTION]... PID...\n", program_name);
 }
 
-static void __attribute__ ((noreturn))
-show_help (const char *program_name)
+static void __noreturn
+fail_invalid_usage (void)
 {
-  show_usage (program_name);
+  show_usage ();
+  printf ("Try `%s --help' for more information.\n", program_name);
+  exit (EXIT_FAILURE);
+}
+
+static void __noreturn
+show_help ()
+{
+  show_usage ();
 
   puts ("\
 Wait for process termination.\n\
 \n\
-This program will exit as soon as the traced process exits. The exit\n\
-status will be the same of the traced process.");
-
-  putc ('\n', stdout);
-
-  puts ("\
+This program will exit as soon as all the traced\n\
+processes exit. The exit status will be the same\n\
+of the process that exited last.\n\
+\n\
 Options:\n\
   -h, --help      show this help message and exit\n\
-  -v, --version   show version information and exit\n");
+  --version       show version information and exit\n\
+  -f, --force     do not fail if one of the given\n\
+                  PIDs cannot be traced\n\
+  -v, --verbose   print information on status\n\
+                  changes of the processes\n\
+\n\
+Report bugs to " PACKAGE_BUGREPORT);
 
-  putc ('\n', stdout);
-
-  printf ("Report bugs to %s", PACKAGE_BUGREPORT);
-
-  putc ('\n', stdout);
-
-  exit (0);
+  exit (EXIT_SUCCESS);
 }
 
-static void __attribute__ ((noreturn))
+static void __noreturn
 show_version (void)
 {
   puts (PACKAGE_STRING);
-  exit (0);
+  exit (EXIT_SUCCESS);
 }
 
-static void __attribute__ ((noreturn))
-show_invalid_usage (const char *program_name)
+static void
+parse_pids (int argc, char **argv, pid_t *pid_list)
 {
-  show_usage (program_name);
+  int i;
 
-  printf ("Try `%s --help' for more information.", program_name);
-  putc ('\n', stdout);
-  fail (NULL);
+  for (i = 0; (optind + i) < argc; i++) {
+    long pid;
+    char *end;
+    const char *s;
+
+    errno = 0;
+    s = argv[optind + i];
+    pid = strtol (s, &end, 10);
+
+    if (errno) {
+      if (errno != ERANGE)
+        fail ("strtoul");
+    }
+    else {
+      if (*end != '\0')
+        errno = EINVAL;
+      else if (pid < 1 || pid > PID_T_MAX)
+        errno = ERANGE;
+    }
+
+    if (errno)
+      fail ("invalid PID: %s", s);
+
+    pid_list[i] = (pid_t)pid;
+  }
 }
 
-static pid_t
-parse_pid_string (const char *str)
+static int
+parse_args (int argc, char **argv, int *force_flag, int *verbose_flag)
 {
-  long n;
-  pid_t pid;
-  char *end;
+  int help_flag;
+  int version_flag;
 
-  errno = 0;
+  *force_flag = 0;
+  help_flag = 0;
+  *verbose_flag = 0;
+  version_flag = 0;
 
-  n = strtol (str, &end, 10);
-  pid = (pid_t)n;
+  int c;
+  int option_index;
+  static struct option long_options[] = {
+    { "force",    no_argument,  0,  'f' },
+    { "help",     no_argument,  0,  'h' },
+    { "verbose",  no_argument,  0,  'v' },
+    { "version",  no_argument,  0,  'V' },
+    { 0,          0,            0,  0   }
+  };
 
-  if (errno && errno != ERANGE)
-    fail ("strtol");
+  for (;;) {
+    c = getopt_long (argc, argv, "fhv", long_options, &option_index);
 
-  if (errno == ERANGE || *end != '\0' || n != (long)pid)
-    fail ("error: invalid pid: %s\n", str);
+    if (c == -1)
+      break;
 
-  return pid;
+    switch (c) {
+      case 'f':
+        *force_flag = 1;
+        break;
+      case 'h':
+        help_flag = 1;
+        break;
+      case 'v':
+        *verbose_flag = 1;
+        break;
+      case 'V':
+        version_flag = 1;
+        break;
+      case '?':
+        break;
+      default:
+        abort ();
+    }
+  }
+
+  if (help_flag)
+    show_help ();
+
+  if (version_flag)
+    show_version ();
+
+  int pid_count;
+
+  pid_count = argc - optind;
+  if (!pid_count) {
+    fprintf (stderr, "%s: expected at least an argument\n", program_name);
+    show_usage ();
+    printf ("Try `%s --help' for more information.\n", program_name);
+    exit (EXIT_FAILURE);
+  }
+
+  return pid_count;
 }
 
 int
 main (int argc, char **argv)
 {
-  int i;
+  program_name = argv[0];
+
+  int force;
+  int verbose;
+  int pid_count;
+  pid_t *pid_list;
+
+  pid_count = parse_args (argc, argv, &force, &verbose);
+  pid_list = alloca (pid_count * sizeof (pid_t));
+  parse_pids (argc, argv, pid_list);
+
   pid_t pid;
-  int status;
-  const char *pid_string;
+  int exit_status;
+  int active_proc_count;
 
-  for (i = 1; i < argc; i++) {
-    if (strcmp (argv[i], "-h") == 0 || strcmp (argv[i], "--help") == 0)
-      show_help (argv[0]);
+  exit_status = 0;
+  active_proc_count = 0;
 
-    if (strcmp (argv[i], "-v") == 0 || strcmp (argv[i], "--version") == 0)
-      show_version ();
+  for (int i = 0; i < pid_count; i++) {
+    pid = pid_list[i];
+
+    if (ptrace (PTRACE_ATTACH, pid, NULL, NULL) < 0) {
+      void (*f)(const char *, ...);
+      f = force ? warn : fail;
+      f ("cannot attach to %ld", (long)pid);
+      continue;
+    }
+
+    if (waitpid (pid, NULL, 0) < 0)
+      fail ("waitpid");
+
+    if (ptrace (PTRACE_CONT, pid, NULL, NULL) < 0)
+      fail ("ptrace");
+
+    if (verbose)
+      printf ("attached to %ld\n", (long)pid);
+
+    active_proc_count++;
   }
 
-  if (argc != 2) {
-    show_usage (argv[0]);
-    fail ("expected 2 arguments, got %d", argc);
+  while (active_proc_count > 0) {
+    int status;
+    int signal;
+
+    if ((pid = wait (&status)) < 0)
+      fail ("wait");
+
+    if (pid_count > 1)
+      printf ("[%ld]  ", (long)pid);
+
+    if (WIFEXITED (status)) {
+      active_proc_count--;
+      signal = 0;
+      exit_status = WEXITSTATUS (status);
+
+      if (verbose)
+        printf ("exited (status %d)\n", exit_status);
+    }
+    else if (WIFSIGNALED (status)) {
+      active_proc_count--;
+      signal = WTERMSIG (status);
+      exit_status = signal | 0x80;
+
+      if (verbose)
+        printf ("killed by %s (%s)\n", signame (signal), strsignal (signal));
+    }
+    else if (WIFSTOPPED (status)) {
+      signal = WSTOPSIG (status);
+
+      if (verbose)
+        printf ("received %s (%s)\n", signame (signal), strsignal (signal));
+    }
+    else
+      abort ();
+
+    if (!WIFEXITED (status) && !WIFSIGNALED (status))
+      if (ptrace (PTRACE_CONT, pid, NULL, (void *)(long)signal) < 0)
+        fail ("ptrace");
   }
 
-  pid_string = argv[1];
-  pid = parse_pid_string (pid_string);
-
-  if (ptrace (PTRACE_ATTACH, pid, NULL, NULL) < 0)
-    err (-1, "error: cannot attach pid %s", pid_string);
-
-  do {
-    if (waitpid (pid, &status, 0) < 0)
-      err (-1, "error: waitpid() failed");
-  } while (!WIFSTOPPED (status));
-
-  if (ptrace (PTRACE_SYSCALL, pid, NULL, NULL) < 0)
-    err (-1, "error: ptrace(PTRACE_SYSCALL, ...) failed");
-
-  do {
-    if (waitpid (pid, &status, 0) < 0)
-      err (-1, "error: waitpid() failed");
-  } while (!WIFSTOPPED (status));
-
-  if (ptrace (PTRACE_CONT, pid, NULL, NULL) < 0)
-    err (-1, "error: ptrace(PTRACE_CONT, ...) failed");
-
-  do {
-    if (waitpid (pid, &status, 0) < 0)
-      err (-1, "error: waitpid() failed");
-  } while (!WIFEXITED (status));
-
-  exit (WEXITSTATUS (status));
+  return exit_status;
 }

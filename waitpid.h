@@ -23,7 +23,6 @@
 #include <sys/wait.h>
 
 #include <errno.h>
-#include <limits.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -31,7 +30,6 @@
 
 #include <alloca.h>
 #include <getopt.h>
-#include <sched.h>
 
 #ifndef __GNUC__
 # define __attribute__(x)
@@ -42,6 +40,7 @@
 # ifdef PID_MAX
 #  define PID_T_MAX PID_MAX
 # else
+#  include <limits.h>
 #  define PID_T_MAX (~(1 << (CHAR_BIT * sizeof (pid_t) - 1)))
 # endif
 #endif

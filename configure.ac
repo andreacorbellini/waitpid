@@ -1,6 +1,6 @@
 AC_PREREQ([2.69])
 AC_INIT([waitpid], [0.0.1], [https://github.com/andrea-corbellini/waitpid])
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_SRCDIR([waitpid.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile])
@@ -11,6 +11,10 @@ AC_PROG_CC
 # Checks for libraries.
 
 # Checks for header files.
+AC_CHECK_HEADERS([getopt.h],,[
+    echo "getopt.h is required for this program"
+    exit 1
+])
 AC_CHECK_HEADERS([sys/ptrace.h],,[
     echo "sys/ptrace.h is required for this program"
     exit 1
