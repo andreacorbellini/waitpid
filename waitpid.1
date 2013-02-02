@@ -1,31 +1,60 @@
-.TH WAITPID 1  "September 2012" "waitpid 0.0.1" "User Commands"
+.TH WAITPID 1  "February 2013" "waitpid 0.0.2" "User Commands"
 .SH NAME
 waitpid \- wait for process termination
 .SH SYNOPSIS
 .B waitpid
-[\fIOPTION\fR]... \fIPID\fR
+[\fIOPTION\fR]... \fIPID\fR...
 .SH DESCRIPTION
 .B waitpid
-exits as soon as the traced process exits. The exit status will be the same of
-the traced process.
+traces the execution of the processes with the
+given PIDs. It will exit as soon as all the
+traced processes have terminated.
 .PP
+When the
+.B --verbose
+option is specified,
 .B waitpid
-makes use of the PTRACE system call. On most systems, this call is limited to
-the root user. See /etc/sysctl.d/10-ptrace.conf for more information.
+prints information about the signals received by
+the traced processes and their exit statuses.
 .SH OPTIONS
 .TP 14
 .TP
 \fB\-h\fR, \fB\-\-help\fR
-display an help message and exit
+Display an help message and exit.
 .TP
-\fB\-v\fR, \fB\-\-version\fR
-display version information and exit
-.SH EXIT STATUS
-If no errors occour,
+\fB\-\-version\fR
+Display version information and exit.
+.TP
+\fB\-f\fR, \fB\-\-force\fR
+When this option is specified,
 .B waitpid
-exits with the same status of the traced process. If a system call fails, the
-exit status is 255. If the usage is wrong, the exit status is 254.
-.SH "REPORTING BUGS"
-Report bugs to https://github.com/andrea-corbellini/waitpid
+won't exit with an error if a given PID cannot be
+traced. (Since 0.0.2)
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Print information about status changes of the
+traced processes. Status changes are: a process
+has terminated or a process has been sent a
+signal. (Since 0.0.2)
+.SH "EXIT STATUS"
+.B waitpid
+exits with the same exit status of the traced process.
+When multiple processes are traced,
+.B waitpid
+exits with the same status of the last process
+that has terminated.
+.SH NOTES
+.B waitpid
+makes use of the
+.BR ptrace (2)
+system call. On most systems, this call can be
+performed only by the root user. The file
+.B /etc/sysctl.d/10-ptrace.conf
+can be adjusted to modify this behavior.
+.SH "SEE ALSO"
+.BR ptrace (2)
+.BR wait (2)
 .SH AUTHOR
 Andrea Corbellini <corbellini.andrea@gmail.com>
+.SH "REPORTING BUGS"
+Report bugs to https://github.com/andrea-corbellini/waitpid
