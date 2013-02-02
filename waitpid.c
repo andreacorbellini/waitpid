@@ -273,7 +273,7 @@ main (int argc, char **argv)
     if ((pid = wait (&status)) < 0)
       fail ("wait");
 
-    if (pid_count > 1)
+    if (verbose && pid_count > 1)
       printf ("[%ld]  ", (long)pid);
 
     if (WIFEXITED (status)) {
