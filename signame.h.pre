@@ -1,0 +1,62 @@
+#!/bin/sh
+
+set -e
+
+exec > "${0%.pre}"
+
+cat <<EOF
+static const char *
+signame (int signal) {
+  switch (signal) {
+EOF
+
+while read signal
+do
+  echo "#ifdef $signal"
+  echo "    case $signal: return \"$signal\";"
+  echo "#endif"
+done <<EOF
+SIGHUP
+SIGINT
+SIGQUIT
+SIGILL
+SIGTRAP
+SIGABRT
+SIGFPE
+SIGKILL
+SIGBUS
+SIGSEGV
+SIGPIPE
+SIGALRM
+SIGTERM
+SIGURG
+SIGSTOP
+SIGTSTP
+SIGCONT
+SIGCHLD
+SIGTTIN
+SIGTTOU
+SIGIO
+SIGXCPU
+SIGXFSZ
+SIGVTALRM
+SIGPROF
+SIGWINCH
+SIGUSR1
+SIGUSR2
+SIGEMT
+SIGSYS
+SIGSTKFLT
+SIGINFO
+SIGPWR
+SIGLOST
+EOF
+
+cat <<EOF
+  }
+
+  static char s[200];
+  sprintf (s, "signal %d", signal);
+  return s;
+}
+EOF
