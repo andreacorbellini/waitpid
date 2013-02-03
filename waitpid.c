@@ -255,10 +255,10 @@ main (int argc, char **argv)
     }
 
     if (waitpid (pid, NULL, 0) < 0)
-      fail ("waitpid");
+      fail ("waitpid failed");
 
     if (ptrace (PTRACE_CONT, pid, NULL, NULL) < 0)
-      fail ("ptrace");
+      fail ("ptrace failed");
 
     if (verbose)
       printf ("attached to %ld\n", (long)pid);
@@ -271,7 +271,7 @@ main (int argc, char **argv)
     int signal;
 
     if ((pid = wait (&status)) < 0)
-      fail ("wait");
+      fail ("wait failed");
 
     if (verbose && pid_count > 1)
       printf ("[%ld] ", (long)pid);
@@ -282,7 +282,7 @@ main (int argc, char **argv)
       exit_status = WEXITSTATUS (status);
 
       if (verbose)
-        printf ("exited (status %d)\n", exit_status);
+        printf ("exited with status %d\n", exit_status);
     }
     else if (WIFSIGNALED (status)) {
       active_proc_count--;
@@ -304,7 +304,7 @@ main (int argc, char **argv)
 
     if (!WIFEXITED (status) && !WIFSIGNALED (status))
       if (ptrace (PTRACE_CONT, pid, NULL, (void *)(long)signal) < 0)
-        fail ("ptrace");
+        fail ("ptrace failed");
   }
 
   return exit_status;

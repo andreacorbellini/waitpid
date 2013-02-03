@@ -27,13 +27,13 @@ option is specified,
 prints information about the signals received by
 the traced processes and their exit statuses.
 Here is an example output that could be produced
-by the command ``waitpid \-v 5060'':
+by the command `waitpid \-v 5060':
 .CW
     attached to 5060
     received SIGSTOP: Stopped (signal)
     received SIGCONT: Continued
     received SIGINT: Interrupt
-    exited (status 0)
+    exited with status 0
 .CE
 If instead of exiting normally, the process has
 been killed by a signal, the output would be:
@@ -47,13 +47,13 @@ been killed by a signal, the output would be:
 When multiple PIDs are given, each line is
 prefixed by the PID the event belongs to.
 Here is an example output that could be produced
-by the command ``waitpid \-v 5060 8090'':
+by the command `waitpid \-v 5060 8090':
 .CW
     [5060] attached to 5060
     [8090] attached to 8090
     [8090] received SIGINT: Interrupt
     [8090] killed by SIGINT
-    [5060] exited (status 2)
+    [5060] exited with status 2
 .CE
 .SH OPTIONS
 .TP 14
@@ -90,10 +90,17 @@ system call. On most systems, this call can be
 performed only by the root user. The file
 .B /etc/sysctl.d/10-ptrace.conf
 can be adjusted to modify this behavior.
-.SH "SEE ALSO"
-.BR ptrace (2)
-.BR wait (2)
 .SH AUTHOR
 Andrea Corbellini <corbellini.andrea@gmail.com>
 .SH "REPORTING BUGS"
 Report bugs to https://github.com/andrea-corbellini/waitpid
+.SH COPYRIGHT
+Copyright (c) 2012, 2013 Andrea Corbellini. This
+software is released under the GNU GPL version 3
+or later <http://gnu.org/licenses/gpl.html>. This
+is free software: you are free to change and
+redistribute it.  There is NO WARRANTY, to the
+extent permitted by law.
+.SH "SEE ALSO"
+.BR ptrace (2)
+.BR wait (2)

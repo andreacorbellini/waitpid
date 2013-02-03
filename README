@@ -1,8 +1,11 @@
-This package is a simple utility program that attaches to a process and then
-hangs till the process exits.
+This package is a simple utility program traces
+the execution of the processes with the given PIDs
+and exits as soon as all the traced processes have
+terminated.
 
-See `waitpid --help' for detailed usage information.
+See `waitpid --help' or `man 1 waitpid' for
+detailed usage information.
 
 See `HACKING' for information about the source code.
 
-Report bugs to https://github.com/andrea-corbellini/waitpid
+Report bugs to <https://github.com/andrea-corbellini/waitpid>
