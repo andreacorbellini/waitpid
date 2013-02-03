@@ -214,6 +214,9 @@ parse_args (int argc, char **argv, int *force_flag, int *verbose_flag)
 
   pid_count = argc - optind;
   if (!pid_count) {
+    if (*force_flag)
+      exit (0);
+
     fprintf (stderr, "%s: expected at least an argument\n", program_name);
     show_usage ();
     printf ("Try `%s --help' for more information.\n", program_name);
