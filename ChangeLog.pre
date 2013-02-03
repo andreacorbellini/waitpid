@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -e
+
+exec <<< "$(git log --format="%ai%n%aN%n%ae%n%B%n")" > "${0%.pre}"
+
+while read date time
+do
+    read author
+    read email
+    read message
+    read blank
+    read blank
+
+    echo "$date  $author <$email>"
+    echo
+    echo "        $message"
+
+    echo
+    echo
+done

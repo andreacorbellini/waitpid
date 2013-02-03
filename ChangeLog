@@ -1,3 +1,60 @@
-2012-09-08  Andrea Corbellini  <corbellini.andrea@gmail.com>
+2013-02-03  Andrea Corbellini <corbellini.andrea@gmail.com>
 
-	Released version 0.0.1
+        Improve the documentation.
+
+
+2013-02-02  Andrea Corbellini <corbellini.andrea@gmail.com>
+
+        Update the manpage.
+
+
+2013-02-02  Andrea Corbellini <corbellini.andrea@gmail.com>
+
+        Print a better output for signals
+
+
+2013-02-02  Andrea Corbellini <corbellini.andrea@gmail.com>
+
+        Update .gitignore
+
+
+2013-02-02  Andrea Corbellini <corbellini.andrea@gmail.com>
+
+        Update manpage.
+
+
+2013-02-02  Andrea Corbellini <corbellini.andrea@gmail.com>
+
+        Do not print anything if -v is not set
+
+
+2013-02-02  Andrea Corbellini <corbellini.andrea@gmail.com>
+
+        Add support for the --force option
+
+
+2013-02-02  Andrea Corbellini <corbellini.andrea@gmail.com>
+
+        Add support for multiple PIDs and improve signal handling
+
+
+2013-02-01  Andrea Corbellini <corbellini.andrea@gmail.com>
+
+        Remove checks on headers and functions from the standard library
+
+
+2013-02-01  Andrea Corbellini <corbellini.andrea@gmail.com>
+
+        Remove dependencies on GNU extensions.
+
+
+2012-09-08  Andrea Corbellini <corbellini.andrea@gmail.com>
+
+        Ignore files added by autotools.
+
+
+2012-09-08  Andrea Corbellini <corbellini.andrea@gmail.com>
+
+        Include the man page in the tarball.
+
+
