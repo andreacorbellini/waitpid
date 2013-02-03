@@ -1,6 +1,6 @@
 AC_PREREQ([2.69])
 AC_INIT([waitpid], [0.0.1], [https://github.com/andrea-corbellini/waitpid])
-AM_INIT_AUTOMAKE([foreign])
+AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([waitpid.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile])

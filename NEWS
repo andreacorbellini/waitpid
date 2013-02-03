@@ -1,0 +1,9 @@
+New features in 0.0.2
+=====================
+
+This version adds support for multiple PIDs.
+
+Two new options have been added: `--force' and
+`--verbose'. This last option can be used both to
+inspect the exit status of the traced processes
+and to see the signals sent to them.
