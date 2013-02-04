@@ -20,8 +20,35 @@
 
 static const char *program_name;
 
+static bool exit_on_error = true;
+
+static bool verbose = false;
+
 static inline void
-vfail (const char *format, va_list ap)
+__print (FILE *f, const char *prefix, const char *suffix, const char *format, va_list ap)
+{
+  if (prefix) {
+    if (format || suffix)
+      fprintf (f, "%s: ", prefix);
+    else
+      fputs (prefix, f);
+  }
+
+  if (format)
+    vfprintf (f, format, ap);
+
+  if (suffix) {
+    if (format)
+      fprintf (f, ": %s\n", suffix);
+    else
+      fprintf (f, "%s\n", suffix);
+  }
+  else
+    fputc ('\n', f);
+}
+
+static inline void
+__error (const char *format, va_list ap)
 {
   int errsv;
 
@@ -31,72 +58,84 @@ vfail (const char *format, va_list ap)
 
   fflush (stdout);
 
-  /* Output an error message in one of the following formats (depending on the
-     value of `format' and `errsv'):
-
-     "error: <custom message>\n"
-     "error: <error string>\n"
-     "error: <custom message>: <error string>\n"
-     ""
-
-     The last one is used in case both `format' and `errsv' are zero. */
-
   if (format) {
-    fputs ("error: ", stderr);
-    vfprintf (stderr, format, ap);
     if (errsv)
-      fprintf (stderr, ": %s\n", strerror (errsv));
+      __print (stderr, "error", strerror (errsv), format, ap);
     else
-      fputc ('\n', stderr);
+      __print (stderr, "error", NULL, format, ap);
   }
   else {
     if (errsv)
-      fprintf (stderr, "error: %s\n", strerror (errsv));
+      __print (stderr, "error", strerror (errsv), NULL, ap);
+    else
+      abort ();
   }
 
   fflush (stderr);
 }
 
-static inline void __noreturn
-fail (const char *format, ...)
+static inline void
+info (int pid_count, pid_t pid, const char *format, ...)
+{
+  if (!verbose)
+    return;
+
+  va_list ap;
+
+  va_start (ap, format);
+
+  if (pid_count == 1)
+    __print (stdout, NULL, NULL, format, ap);
+  else {
+    char prefix[256];
+    sprintf (prefix, "%ld", (long)pid);
+    __print (stdout, prefix, NULL, format, ap);
+  }
+
+  va_end (ap);
+}
+
+static inline void
+error (const char *format, ...)
 {
   va_list ap;
 
   va_start (ap, format);
-  vfail (format, ap);
+  __error (format, ap);
+  va_end (ap);
+
+  if (exit_on_error)
+    exit (EXIT_FAILURE);
+}
+
+static inline void
+fatal (const char *format, ...)
+{
+  va_list ap;
+
+  va_start (ap, format);
+  __error (format, ap);
   va_end (ap);
 
   exit (EXIT_FAILURE);
 }
 
 static inline void
-warn (const char *format, ...)
-{
-  va_list ap;
-
-  va_start (ap, format);
-  vfail (format, ap);
-  va_end (ap);
-}
-
-static void
-show_usage (void)
+print_usage (void)
 {
   printf ("Usage: %s [OPTION]... PID...\n", program_name);
 }
 
-static void __noreturn
-fail_invalid_usage (void)
+static inline void
+print_invalid_usage (void)
 {
-  show_usage ();
-  printf ("Try `%s --help' for more information.\n", program_name);
-  exit (EXIT_FAILURE);
+  fprintf (stderr, "Try `%s --help' for more information.\n", program_name);
 }
 
-static void __noreturn
-show_help ()
+static inline void
+print_help ()
 {
-  show_usage ();
+  print_usage ();
 
   puts ("\
 Wait for process termination.\n\
@@ -114,59 +153,22 @@ Options:\n\
                   changes of the processes\n\
 \n\
 Report bugs to " PACKAGE_BUGREPORT);
-
-  exit (EXIT_SUCCESS);
 }
 
-static void __noreturn
-show_version (void)
+static inline void
+print_version (void)
 {
   puts (PACKAGE_STRING);
-  exit (EXIT_SUCCESS);
-}
-
-static void
-parse_pids (int argc, char **argv, pid_t *pid_list)
-{
-  int i;
-
-  for (i = 0; (optind + i) < argc; i++) {
-    long pid;
-    char *end;
-    const char *s;
-
-    errno = 0;
-    s = argv[optind + i];
-    pid = strtol (s, &end, 10);
-
-    if (errno) {
-      if (errno != ERANGE)
-        fail ("strtoul");
-    }
-    else {
-      if (*end != '\0')
-        errno = EINVAL;
-      else if (pid < 1 || pid > PID_T_MAX)
-        errno = ERANGE;
-    }
-
-    if (errno)
-      fail ("invalid PID: %s", s);
-
-    pid_list[i] = (pid_t)pid;
-  }
 }
 
 static int
-parse_args (int argc, char **argv, int *force_flag, int *verbose_flag)
+parse_arguments (int argc, char **argv)
 {
-  int help_flag;
-  int version_flag;
+  bool show_help;
+  bool show_version;
 
-  *force_flag = 0;
-  help_flag = 0;
-  *verbose_flag = 0;
-  version_flag = 0;
+  show_help = 0;
+  show_version = 0;
 
   int c;
   int option_index;
@@ -186,41 +188,98 @@ parse_args (int argc, char **argv, int *force_flag, int *verbose_flag)
 
     switch (c) {
       case 'f':
-        *force_flag = 1;
+        exit_on_error = false;
         break;
       case 'h':
-        help_flag = 1;
+        show_help = true;
         break;
       case 'v':
-        *verbose_flag = 1;
+        verbose = true;
         break;
       case 'V':
-        version_flag = 1;
+        show_version = true;
         break;
       case '?':
-        break;
+        print_invalid_usage ();
+        exit (EXIT_FAILURE);
       default:
         abort ();
     }
   }
 
-  if (help_flag)
-    show_help ();
+  if (show_help) {
+    print_help ();
+    exit (EXIT_SUCCESS);
+  }
 
-  if (version_flag)
-    show_version ();
+  if (show_version) {
+    print_version ();
+    exit (EXIT_SUCCESS);
+  }
 
   int pid_count;
 
   pid_count = argc - optind;
   if (!pid_count) {
-    if (*force_flag)
-      exit (0);
+    if (!exit_on_error)
+      exit (EXIT_SUCCESS);
 
     fprintf (stderr, "%s: expected at least an argument\n", program_name);
-    show_usage ();
-    printf ("Try `%s --help' for more information.\n", program_name);
+    print_invalid_usage ();
     exit (EXIT_FAILURE);
+  }
+
+  return pid_count;
+}
+
+static inline pid_t
+parse_pid (const char *s)
+{
+  long pid;
+  char *end;
+
+  errno = 0;
+  pid = strtol (s, &end, 10);
+
+  if (errno) {
+    if (errno != ERANGE)
+      fatal ("strtoul");
+  }
+  else {
+    if (*end != '\0')
+      errno = EINVAL;
+    else if (pid < 1 || pid > PID_T_MAX)
+      errno = ERANGE;
+  }
+
+  if (errno)
+    fatal ("invalid PID: %s", s);
+
+  return (pid_t)pid;
+}
+
+static int
+parse_pid_list (int argc, char **argv, pid_t *pid_list)
+{
+  int i;
+  int j;
+  pid_t pid;
+  int pid_count;
+
+  pid_count = 0;
+
+  for (i = optind; i < argc; i++) {
+    pid = parse_pid (argv[i]);
+
+    for (j = 0; j < pid_count; j++) {
+      if (pid_list[j] == pid)
+        break;
+    }
+
+    if (j >= pid_count) {
+      pid_list[pid_count] = pid;
+      pid_count++;
+    }
   }
 
   return pid_count;
@@ -231,83 +290,77 @@ main (int argc, char **argv)
 {
   program_name = argv[0];
 
-  int force;
-  int verbose;
   int pid_count;
   pid_t *pid_list;
 
-  pid_count = parse_args (argc, argv, &force, &verbose);
+  pid_count = parse_arguments (argc, argv);
   pid_list = alloca (pid_count * sizeof (pid_t));
-  parse_pids (argc, argv, pid_list);
+  pid_count = parse_pid_list (argc, argv, pid_list);
 
   pid_t pid;
   int exit_status;
-  int active_proc_count;
+  int active_processes_count;
 
   exit_status = 0;
-  active_proc_count = 0;
+  active_processes_count = 0;
 
   for (int i = 0; i < pid_count; i++) {
     pid = pid_list[i];
 
     if (ptrace (PTRACE_ATTACH, pid, NULL, NULL) < 0) {
-      void (*f)(const char *, ...);
-      f = force ? warn : fail;
-      f ("cannot attach to %ld", (long)pid);
+      error ("cannot attach to %ld", (long)pid);
       continue;
     }
 
     if (waitpid (pid, NULL, 0) < 0)
-      fail ("waitpid failed");
+      fatal ("waitpid failed");
 
     if (ptrace (PTRACE_CONT, pid, NULL, NULL) < 0)
-      fail ("ptrace failed");
+      fatal ("ptrace failed");
 
     if (verbose)
-      printf ("attached to %ld\n", (long)pid);
+      info (pid_count, pid, "process attached");
 
-    active_proc_count++;
+    active_processes_count++;
   }
 
-  while (active_proc_count > 0) {
+  while (active_processes_count > 0) {
     int status;
     int signal;
 
     if ((pid = wait (&status)) < 0)
-      fail ("wait failed");
-
-    if (verbose && pid_count > 1)
-      printf ("[%ld] ", (long)pid);
+      fatal ("wait failed");
 
     if (WIFEXITED (status)) {
-      active_proc_count--;
       signal = 0;
       exit_status = WEXITSTATUS (status);
+      active_processes_count--;
 
       if (verbose)
-        printf ("exited with status %d\n", exit_status);
+        info (pid_count, pid, "exited with status %d", exit_status);
     }
     else if (WIFSIGNALED (status)) {
-      active_proc_count--;
       signal = WTERMSIG (status);
       exit_status = signal | 0x80;
+      active_processes_count--;
 
       if (verbose)
-        printf ("killed by %s%s\n", signame (signal),
-                WCOREDUMP (status) ? " (core dumped)" : "");
+        info (pid_count, pid, "killed by %s%s",
+              signame (signal), WCOREDUMP (status) ? " (core dumped)" : "");
     }
     else if (WIFSTOPPED (status)) {
       signal = WSTOPSIG (status);
 
       if (verbose)
-        printf ("received %s: %s\n", signame (signal), strsignal (signal));
+        info (pid_count, pid, "received %s: %s",
+              signame (signal), strsignal (signal));
     }
     else
       abort ();
 
     if (!WIFEXITED (status) && !WIFSIGNALED (status))
       if (ptrace (PTRACE_CONT, pid, NULL, (void *)(long)signal) < 0)
-        fail ("ptrace failed");
+        fatal ("ptrace failed");
   }
 
   return exit_status;
