@@ -29,7 +29,7 @@ the traced processes and their exit statuses.
 Here is an example output that could be produced
 by the command `waitpid \-v 5060':
 .CW
-    attached to 5060
+    attached to process
     received SIGSTOP: Stopped (signal)
     received SIGCONT: Continued
     received SIGINT: Interrupt
@@ -38,7 +38,7 @@ by the command `waitpid \-v 5060':
 If instead of exiting normally, the process has
 been killed by a signal, the output would be:
 .CW
-    attached to 5060
+    attached to process
     received SIGSTOP: Stopped
     received SIGCONT: Continued
     received SIGSEGV: Segmentation fault
@@ -49,11 +49,11 @@ prefixed by the PID the event belongs to.
 Here is an example output that could be produced
 by the command `waitpid \-v 5060 8090':
 .CW
-    [5060] attached to 5060
-    [8090] attached to 8090
-    [8090] received SIGINT: Interrupt
-    [8090] killed by SIGINT
-    [5060] exited with status 2
+    5060: attached to process
+    8090: attached to process
+    8090: received SIGINT: Interrupt
+    8090: killed by SIGINT
+    5060: exited with status 2
 .CE
 .SH OPTIONS
 .TP 14
