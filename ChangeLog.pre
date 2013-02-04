@@ -2,7 +2,7 @@
 
 set -e
 
-exec <<< "$(git log --format="%ai%n%aN%n%ae%n%B%n")" > "${0%.pre}"
+exec < <(git log --format="%ai%n%aN%n%ae%n%B%n") > "${0%.pre}"
 
 while read date time
 do
