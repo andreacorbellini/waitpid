@@ -75,23 +75,17 @@ __error (const char *format, va_list ap)
 }
 
 static inline void
-info (int pid_count, pid_t pid, const char *format, ...)
+info (pid_t pid, const char *format, ...)
 {
   if (!verbose)
     return;
 
   va_list ap;
+  char prefix[256];
 
   va_start (ap, format);
-
-  if (pid_count == 1)
-    __print (stdout, NULL, NULL, format, ap);
-  else {
-    char prefix[256];
-    sprintf (prefix, "%ld", (long)pid);
-    __print (stdout, prefix, NULL, format, ap);
-  }
-
+  sprintf (prefix, "%ld", (long)pid);
+  __print (stdout, prefix, NULL, format, ap);
   va_end (ap);
 }
 
@@ -319,7 +313,7 @@ main (int argc, char **argv)
       fatal ("ptrace failed");
 
     if (verbose)
-      info (pid_count, pid, "process attached");
+      info (pid, "attached to process");
 
     active_processes_count++;
   }
@@ -337,7 +331,7 @@ main (int argc, char **argv)
       active_processes_count--;
 
       if (verbose)
-        info (pid_count, pid, "exited with status %d", exit_status);
+        info (pid, "exited with status %d", exit_status);
     }
     else if (WIFSIGNALED (status)) {
       signal = WTERMSIG (status);
@@ -345,15 +339,13 @@ main (int argc, char **argv)
       active_processes_count--;
 
       if (verbose)
-        info (pid_count, pid, "killed by %s%s",
-              signame (signal), WCOREDUMP (status) ? " (core dumped)" : "");
+        info (pid, "killed by %s%s", signame (signal), WCOREDUMP (status) ? " (core dumped)" : "");
     }
     else if (WIFSTOPPED (status)) {
       signal = WSTOPSIG (status);
 
       if (verbose)
-        info (pid_count, pid, "received %s: %s",
-              signame (signal), strsignal (signal));
+        info (pid, "received %s: %s", signame (signal), strsignal (signal));
     }
     else
       abort ();
