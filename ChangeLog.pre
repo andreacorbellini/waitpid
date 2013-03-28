@@ -12,10 +12,22 @@ do
     read blank
     read blank
 
-    echo "$date  $author <$email>"
-    echo
-    echo "        $message"
+    firstline="$date  $author  <$email>"
 
-    echo
-    echo
+    if [[ "$firstline" != "$last_firstline" && "$last_firstline" != "" ]]
+    then
+        echo "$last_firstline"
+        echo
+        echo "$message_list"
+        message_list=""
+    fi
+
+    message_list="    * $message
+
+$message_list"
+    last_firstline="$firstline"
 done
+
+echo "$last_firstline"
+echo
+echo "${message_list}"
