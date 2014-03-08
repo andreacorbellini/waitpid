@@ -18,6 +18,7 @@
 
 #include <errno.h>
 #include <getopt.h>
+#include <libintl.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -36,9 +37,11 @@
 # include <sys/ptrace.h>
 #endif
 
-#include <signame.h>
+#ifdef HAVE_PTRACE
+# include <signame.h>
+#endif
 
-#define _(s) (s)
+#define _(s) gettext (s)
 
 /* POSIX states that pid_t is a signed integer type of size no
    greater than the size of long. This is why we are defining
@@ -433,6 +436,10 @@ kill_wait (void)
 int
 main (int argc, char **argv)
 {
+  setlocale (LC_ALL, "");
+  bindtextdomain (PACKAGE, LOCALEDIR);
+  textdomain (PACKAGE);
+
   parse_options (argc, argv);
 
   if (ptrace_visit () == 0)

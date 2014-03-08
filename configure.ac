@@ -3,10 +3,13 @@
 
 AC_PREREQ([2.69])
 AC_INIT([waitpid], [0.2], [https://github.com/andrea-corbellini/waitpid])
-AM_INIT_AUTOMAKE([-Wall foreign])
+
 AC_CONFIG_SRCDIR([waitpid.c])
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile po/Makefile.in])
+
+AM_INIT_AUTOMAKE([-Wall foreign])
+AM_GNU_GETTEXT([external])
 
 # Checks for programs.
 AC_PROG_CC
