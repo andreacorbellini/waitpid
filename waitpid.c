@@ -1,359 +1,439 @@
-/*
- * waitpid - wait for process termination
- * Copyright (C) 2012  Andrea Corbellini <corbellini.andrea@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+/* waitpid -- wait for process(es) termination
+   Copyright (C) 2012-2014 Andrea Corbellini <corbellini.andrea@gmail.com>
 
-#include "waitpid.h"
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+
+#include <config.h>
+
+#include <errno.h>
+#include <getopt.h>
+#include <limits.h>
+#include <signal.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+#ifdef HAVE_SYS_TYPES_H
+# include <sys/types.h>
+#endif
+#ifdef HAVE_SYS_WAIT_H
+# include <sys/wait.h>
+#endif
+#ifdef HAVE_SYS_PTRACE_H
+# include <sys/ptrace.h>
+#endif
+
+#include <signame.h>
+
+#define _(s) (s)
+
+/* POSIX states that pid_t is a signed integer type of size no
+   greater than the size of long. This is why we are defining
+   PID_T_MAX in this way and is also why we will print PIDs
+   using %ld.  */
+#define PID_T_MAX (~((pid_t)1 << (sizeof (pid_t) * CHAR_BIT - 1)))
+
+/* The value of argv[0].  */
 static const char *program_name;
 
-static bool exit_on_error = true;
-
-static bool verbose = false;
-
-static inline void
-__print (FILE *f, const char *prefix, const char *suffix, const char *format, va_list ap)
+static struct option const long_options[] =
 {
-  if (prefix) {
-    if (format || suffix)
-      fprintf (f, "%s: ", prefix);
-    else
-      fputs (prefix, f);
-  }
+  {"force", no_argument, NULL, 'f'},
+  {"sleep-interval", required_argument, NULL, 's'},
+  {"verbose", no_argument, NULL, 'v'},
+  {"help", no_argument, NULL, 'h'},
+  {"version", no_argument, NULL, 'V'}
+};
 
-  if (format)
-    vfprintf (f, format, ap);
+/* Whether --force was specified or not.  */
+static bool allow_invalid_processes;
 
-  if (suffix) {
-    if (format)
-      fprintf (f, ": %s\n", suffix);
-    else
-      fprintf (f, "%s\n", suffix);
-  }
+/* The value of --sleep-interval.  */
+static double sleep_interval;
+#define DEFAULT_SLEEP_INTERVAL .5
+
+/* The value of --verbose.  */
+static bool verbose;
+
+/* The list of PIDs specified on the command line.  */
+static pid_t *pid_list;
+static size_t pid_list_size;
+
+/* The number of processes that are still alive. It is initially
+   set by either ptrace_visit() or kill_visit() and used by
+   ptrace_wait() and kill_wait().  */
+static size_t active_pid_count;
+
+static void
+print_usage (int status)
+{
+  if (status != EXIT_SUCCESS)
+    fprintf (stderr, _("Try `%s --help' for more information\n"),
+             program_name);
   else
-    fputc ('\n', f);
-}
+    {
+      printf (_("Usage: %s [OPTION]... PID...\n"), program_name);
 
-static inline void
-__error (const char *format, va_list ap)
-{
-  int errsv;
+      puts (_("Wait until all the specified processes have exited.\n"));
 
-  /* Save the value of `errno'. We will be doing some I/O, thus there is
-     probability that `errno' will change. */
-  errsv = errno;
+      puts (_("\
+      -f, --force     do not fail if one of the PID specified does\n\
+                      not correspond to a running process."));
+      printf(_("\
+      -s, --sleep-interval=N\n\
+                      check for the existence of the processes every\n\
+                      N seconds (default: %.1f).\n"),
+             DEFAULT_SLEEP_INTERVAL);
+      puts (_("\
+      -v, --verbose   display a message on the standard output every\n\
+                      time a process exits or receives a signal.\n\
+      -h, --help      display this help and exit\n\
+          --version   output version information and exit"));
 
-  fflush (stdout);
-
-  if (format) {
-    if (errsv)
-      __print (stderr, "error", strerror (errsv), format, ap);
-    else
-      __print (stderr, "error", NULL, format, ap);
-  }
-  else {
-    if (errsv)
-      __print (stderr, "error", strerror (errsv), NULL, ap);
-    else
-      abort ();
-  }
-
-  fflush (stderr);
-}
-
-static inline void
-info (pid_t pid, const char *format, ...)
-{
-  if (!verbose)
-    return;
-
-  va_list ap;
-  char prefix[256];
-
-  va_start (ap, format);
-  sprintf (prefix, "%ld", (long)pid);
-  __print (stdout, prefix, NULL, format, ap);
-  va_end (ap);
-}
-
-static inline void
-error (const char *format, ...)
-{
-  va_list ap;
-
-  va_start (ap, format);
-  __error (format, ap);
-  va_end (ap);
-
-  if (exit_on_error)
-    exit (EXIT_FAILURE);
-}
-
-static inline void
-fatal (const char *format, ...)
-{
-  va_list ap;
-
-  va_start (ap, format);
-  __error (format, ap);
-  va_end (ap);
-
-  exit (EXIT_FAILURE);
-}
-
-static inline void
-print_usage (void)
-{
-  printf ("Usage: %s [OPTION]... PID...\n", program_name);
-}
-
-static inline void
-print_invalid_usage (void)
-{
-  fprintf (stderr, "Try `%s --help' for more information.\n", program_name);
-}
-
-static inline void
-print_help ()
-{
-  print_usage ();
-
-  puts ("\
-Wait for process termination.\n\
+      puts (_("\
 \n\
-This program will exit as soon as all the traced\n\
-processes exit. The exit status will be the same\n\
-of the process that exited last.\n\
+When possible, this program will use the ptrace(2) system call to\n\
+wait for programs. With ptrace(2), the `--sleep-interval' option is\n\
+ignored, as events are reported immediately. Additionally, if\n\
+`--verbose' is specified, the program will display exit statuses\n\
+and signals delivered to the processes.\n\
 \n\
-Options:\n\
-  -h, --help      show this help message and exit\n\
-  --version       show version information and exit\n\
-  -f, --force     do not fail if one of the given\n\
-                  PIDs cannot be traced\n\
-  -v, --verbose   print information on status\n\
-                  changes of the processes\n\
+If ptrace(2) is not available, `--sleep-interval' is not ignored\n\
+and `--verbose' does not report information about exit statuses and\n\
+signals (it just prints a line whenever a process terminates).\n\
 \n\
-Report bugs to " PACKAGE_BUGREPORT);
+The program will try to use ptrace(2) only if the host supports it\n\
+and if the program has the necessary permissions. See `man ptrace'\n\
+for more information."));
+    }
+
+  exit (status);
 }
 
-static inline void
-print_version (void)
+static void
+print_version (int status)
 {
   puts (PACKAGE_STRING);
+  exit (status);
 }
 
-static int
-parse_arguments (int argc, char **argv)
+static void
+parse_options (int argc, char **argv)
 {
-  bool show_help;
-  bool show_version;
-
-  show_help = 0;
-  show_version = 0;
-
   int c;
-  int option_index;
-  static struct option long_options[] = {
-    { "force",    no_argument,  0,  'f' },
-    { "help",     no_argument,  0,  'h' },
-    { "verbose",  no_argument,  0,  'v' },
-    { "version",  no_argument,  0,  'V' },
-    { 0,          0,            0,  0   }
-  };
-
-  for (;;) {
-    c = getopt_long (argc, argv, "fhv", long_options, &option_index);
-
-    if (c == -1)
-      break;
-
-    switch (c) {
-      case 'f':
-        exit_on_error = false;
-        break;
-      case 'h':
-        show_help = true;
-        break;
-      case 'v':
-        verbose = true;
-        break;
-      case 'V':
-        show_version = true;
-        break;
-      case '?':
-        print_invalid_usage ();
-        exit (EXIT_FAILURE);
-      default:
-        abort ();
-    }
-  }
-
-  if (show_help) {
-    print_help ();
-    exit (EXIT_SUCCESS);
-  }
-
-  if (show_version) {
-    print_version ();
-    exit (EXIT_SUCCESS);
-  }
-
-  int pid_count;
-
-  pid_count = argc - optind;
-  if (!pid_count) {
-    if (!exit_on_error)
-      exit (EXIT_SUCCESS);
-
-    fprintf (stderr, "%s: expected at least an argument\n", program_name);
-    print_invalid_usage ();
-    exit (EXIT_FAILURE);
-  }
-
-  return pid_count;
-}
-
-static inline pid_t
-parse_pid (const char *s)
-{
-  long pid;
   char *end;
 
-  errno = 0;
-  pid = strtol (s, &end, 10);
+  program_name = argv[0];
+  allow_invalid_processes = false;
+  sleep_interval = DEFAULT_SLEEP_INTERVAL;
+  verbose = false;
 
-  if (errno) {
-    if (errno != ERANGE)
-      fatal ("strtoul");
-  }
-  else {
-    if (*end != '\0')
-      errno = EINVAL;
-    else if (pid < 1 || pid > PID_T_MAX)
-      errno = ERANGE;
-  }
+  for (;;)
+    {
+      c = getopt_long (argc, argv, "fs:vhV", long_options, NULL);
 
-  if (errno)
-    fatal ("invalid PID: %s", s);
+      if (c == -1)
+        break;
 
-  return (pid_t)pid;
+      switch (c)
+        {
+          case 'f': /* --force */
+            allow_invalid_processes = true;
+            break;
+
+          case 's':
+            errno = 0;
+            sleep_interval = strtod (optarg, &end);
+            if (optarg[0] == '\0' || *end != '\0' || errno != 0)
+              {
+                fprintf (stderr, _("%s: %s: invalid number of seconds\n"),
+                         program_name, optarg);
+                exit (EXIT_FAILURE);
+              }
+            break;
+
+          case 'v': /* --verbose */
+            verbose = true;
+            break;
+
+          case 'h': /* --help */
+            print_usage (EXIT_SUCCESS);
+
+          case 'V': /* --version */
+            print_version (EXIT_SUCCESS);
+
+          case '?':
+            print_usage (EXIT_FAILURE);
+
+          default:
+            abort ();
+        }
+    }
+
+  if (optind >= argc)
+    {
+      fprintf (stderr, _("%s: missing PID\n"), program_name);
+      print_usage (EXIT_FAILURE);
+    }
+
+  pid_list_size = (size_t)(argc - optind);
+  pid_list = calloc (pid_list_size, sizeof (pid_t));
+
+  if (pid_list == NULL)
+    {
+      fprintf (stderr, _("%s: cannot allocate memory: %s\n"),
+               program_name, strerror (errno));
+      exit (EXIT_FAILURE);
+    }
+
+  for (int i = optind; i < argc; i++)
+    {
+      /* pid_t is signed, but negative PIDs are not valid
+         process identifiers, hence we use unsigned long and
+         strtoul(). */
+      unsigned long x;
+
+      errno = 0;
+      x = strtoul (argv[i], &end, 10);
+
+      if (argv[i][0] == '\0' || *end != '\0' || errno != 0 || x > PID_T_MAX)
+        {
+          fprintf (stderr, _("%s: %s: invalid PID\n"),
+                   program_name, argv[i]);
+          exit (EXIT_FAILURE);
+        }
+
+      pid_list[i - optind] = (pid_t)x;
+    }
 }
 
 static int
-parse_pid_list (int argc, char **argv, pid_t *pid_list)
+ptrace_visit (void)
 {
-  int i;
-  int j;
+#ifdef HAVE_PTRACE
   pid_t pid;
-  int pid_count;
 
-  pid_count = 0;
+  active_pid_count = 0;
 
-  for (i = optind; i < argc; i++) {
-    pid = parse_pid (argv[i]);
+  for (size_t i = 0; i < pid_list_size; i++)
+    {
+      pid = pid_list[i];
 
-    for (j = 0; j < pid_count; j++) {
-      if (pid_list[j] == pid)
-        break;
+      if (pid < 0)
+        continue;
+
+      if (ptrace (PTRACE_ATTACH, pid, NULL, NULL) < 0)
+        {
+          if (errno == EPERM)
+            {
+              /* We can't ptrace() one or more processes; detach from all the
+                 traced processes.  */
+              for (size_t j = 0; j < i; j++)
+                {
+                  pid = pid_list[j];
+
+                  if (pid < 0)
+                    continue;
+
+                  if (ptrace (PTRACE_DETACH, pid, NULL, NULL) < 0)
+                    {
+                      fprintf (stderr,
+                               _("%s: %ld: cannot detach from process: %s\n"),
+                               program_name, (long)pid,
+                               strerror (errno));
+                      exit (EXIT_FAILURE);
+                    }
+                }
+
+              /* Tell main() to use the kill() implementation.  */
+              return -1;
+            }
+          else if (errno == ESRCH)
+            {
+              fprintf (stderr, _("%s: %ld: no such process\n"),
+                       program_name, (long)pid);
+              if  (!allow_invalid_processes)
+                exit (EXIT_FAILURE);
+              pid_list[i] = -1;
+              continue;
+            }
+          else
+            {
+              fprintf (stderr, _("%s: %ld: cannot attach to process: %s\n"),
+                       program_name, (long)pid, strerror (errno));
+              exit (EXIT_FAILURE);
+            }
+        }
+
+      if (waitpid (pid, NULL, 0) < 0
+          || ptrace (PTRACE_CONT, pid, NULL, NULL) < 0)
+        {
+          fprintf (stderr, _("%s: %ld: cannot attach to process: %s\n"),
+                   program_name, (long)pid, strerror (errno));
+          exit (EXIT_FAILURE);
+        }
+
+      printf (_("%ld: waiting\n"), (long)pid);
+      active_pid_count++;
     }
 
-    if (j >= pid_count) {
-      pid_list[pid_count] = pid;
-      pid_count++;
-    }
-  }
+  return 0;
+#else /* HAVE_PTRACE */
+  return -1;
+#endif /* HAVE_PTRACE */
+}
 
-  return pid_count;
+static void
+ptrace_wait (void)
+{
+#ifdef HAVE_PTRACE
+  pid_t pid;
+  int status;
+
+  while (active_pid_count)
+    {
+      pid = wait (&status);
+
+      if (pid < 0)
+        {
+          fprintf (stderr, _("%s: cannot wait: %s\n"),
+                   program_name, strerror (errno));
+          exit (EXIT_FAILURE);
+        }
+
+      if (WIFEXITED (status))
+        {
+          if (verbose)
+            printf (_("%ld: exited with status %d\n"),
+                    (long)pid, WEXITSTATUS (status));
+          active_pid_count--;
+        }
+      else if (WIFSIGNALED (status))
+        {
+          if (verbose)
+            printf (
+# ifdef WCOREDUMP
+                    WCOREDUMP (status)
+                      ? _("%ld: killed by %s (core dumped)\n")
+                      :
+# endif
+                    _("%ld: killed by %s\n"),
+                    (long)pid, signame (WTERMSIG (status)));
+          active_pid_count--;
+        }
+      else if (WIFSTOPPED (status))
+        {
+          if (verbose)
+            printf (_("%ld: received %s\n"),
+                    (long)pid, signame (WSTOPSIG (status)));
+
+          if (ptrace (PTRACE_CONT, pid, NULL, (void *)(long)WSTOPSIG (status)) < 0)
+            {
+              fprintf (stderr, _("%s: %ld: cannot restart process: %s\n"),
+                       program_name, (long)pid, strerror (errno));
+              exit (EXIT_FAILURE);
+            }
+        }
+      else
+        abort ();
+    }
+#else /* HAVE_PTRACE */
+  abort ();
+#endif /* HAVE_PTRACE */
+}
+
+static void
+kill_visit (void)
+{
+  pid_t pid;
+
+  active_pid_count = 0;
+
+  for (size_t i = 0; i < pid_list_size; i++)
+    {
+      pid = pid_list[i];
+
+      if (pid < 0)
+        continue;
+
+      if (kill (pid, 0) < 0 && errno != EPERM)
+        {
+          fprintf (stderr, _("%s: %ld: no such process\n"),
+          program_name, (long)pid);
+          if  (!allow_invalid_processes)
+            exit (EXIT_FAILURE);
+          pid_list[i] = -1;
+        }
+      else
+        {
+          if (verbose)
+            printf (_("%ld: waiting\n"), (long)pid);
+          active_pid_count++;
+        }
+    }
+}
+
+static void
+kill_wait (void)
+{
+  pid_t pid;
+  struct timespec ts;
+
+  ts.tv_sec = (time_t)sleep_interval;
+  ts.tv_nsec = (sleep_interval - (double)ts.tv_sec) * 1000000.;
+
+  while (active_pid_count)
+    {
+      if (nanosleep (&ts, NULL) < 0 && errno != EINTR)
+        {
+          fprintf (stderr, _("%s: cannot sleep: %s\n"),
+                   program_name, strerror (errno));
+          exit (EXIT_FAILURE);
+        }
+
+      for (size_t i = 0; i < pid_list_size; i++)
+        {
+          pid = pid_list[i];
+
+          if (pid < 0)
+            continue;
+
+          if (kill (pid, 0) < 0 && errno != EPERM)
+            {
+              if (verbose)
+                printf (_("%ld: exited\n"), (long)pid);
+              active_pid_count--;
+              pid_list[i] = 0;
+            }
+        }
+    }
 }
 
 int
 main (int argc, char **argv)
 {
-  program_name = argv[0];
+  parse_options (argc, argv);
 
-  int pid_count;
-  pid_t *pid_list;
-
-  pid_count = parse_arguments (argc, argv);
-  pid_list = alloca (pid_count * sizeof (pid_t));
-  pid_count = parse_pid_list (argc, argv, pid_list);
-
-  pid_t pid;
-  int exit_status;
-  int active_processes_count;
-
-  exit_status = 0;
-  active_processes_count = 0;
-
-  for (int i = 0; i < pid_count; i++) {
-    pid = pid_list[i];
-
-    if (ptrace (PTRACE_ATTACH, pid, NULL, NULL) < 0) {
-      error ("cannot attach to %ld", (long)pid);
-      continue;
+  if (ptrace_visit () == 0)
+    ptrace_wait ();
+  else
+    {
+      kill_visit ();
+      kill_wait ();
     }
 
-    if (waitpid (pid, NULL, 0) < 0)
-      fatal ("waitpid failed");
-
-    if (ptrace (PTRACE_CONT, pid, NULL, NULL) < 0)
-      fatal ("ptrace failed");
-
-    if (verbose)
-      info (pid, "attached to process");
-
-    active_processes_count++;
-  }
-
-  while (active_processes_count > 0) {
-    int status;
-    int signal;
-
-    if ((pid = wait (&status)) < 0)
-      fatal ("wait failed");
-
-    if (WIFEXITED (status)) {
-      signal = 0;
-      exit_status = WEXITSTATUS (status);
-      active_processes_count--;
-
-      if (verbose)
-        info (pid, "exited with status %d", exit_status);
-    }
-    else if (WIFSIGNALED (status)) {
-      signal = WTERMSIG (status);
-      exit_status = signal | 0x80;
-      active_processes_count--;
-
-      if (verbose)
-        info (pid, "killed by %s%s", signame (signal), WCOREDUMP (status) ? " (core dumped)" : "");
-    }
-    else if (WIFSTOPPED (status)) {
-      signal = WSTOPSIG (status);
-
-      if (verbose)
-        info (pid, "received %s: %s", signame (signal), strsignal (signal));
-    }
-    else
-      abort ();
-
-    if (!WIFEXITED (status) && !WIFSIGNALED (status))
-      if (ptrace (PTRACE_CONT, pid, NULL, (void *)(long)signal) < 0)
-        fatal ("ptrace failed");
-  }
-
-  return exit_status;
+  exit (EXIT_SUCCESS);
 }
