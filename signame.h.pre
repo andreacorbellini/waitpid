@@ -6,14 +6,16 @@ exec > "${0%.pre}"
 
 cat <<EOF
 static const char *
-signame (int signal) {
-  switch (signal) {
+signame (int signal)
+{
+  switch (signal)
+    {
 EOF
 
 while read signal
 do
   echo "#ifdef $signal"
-  echo "    case $signal: return \"$signal\";"
+  echo "      case $signal: return \"$signal\";"
   echo "#endif"
 done <<EOF
 SIGHUP
@@ -53,10 +55,10 @@ SIGLOST
 EOF
 
 cat <<EOF
-  }
+    }
 
   static char s[200];
-  sprintf (s, "signal %d", signal);
+  snprintf (s, sizeof (s), "signal %d", signal);
   return s;
 }
 EOF
