@@ -59,7 +59,7 @@ static struct option const long_options[] =
 };
 
 /* Whether --force was specified or not.  */
-static bool allow_invalid_processes;
+static bool allow_invalid_pids;
 
 /* The value of --sleep-interval.  */
 static double sleep_interval;
@@ -137,7 +137,7 @@ parse_options (int argc, char **argv)
   char *end;
 
   program_name = argv[0];
-  allow_invalid_processes = false;
+  allow_invalid_pids = false;
   sleep_interval = DEFAULT_SLEEP_INTERVAL;
   verbose = false;
 
@@ -151,7 +151,7 @@ parse_options (int argc, char **argv)
       switch (c)
         {
           case 'f': /* --force */
-            allow_invalid_processes = true;
+            allow_invalid_pids = true;
             break;
 
           case 's':
@@ -185,8 +185,16 @@ parse_options (int argc, char **argv)
 
   if (optind >= argc)
     {
-      fprintf (stderr, _("%s: missing PID\n"), program_name);
-      print_usage (EXIT_FAILURE);
+      if (allow_invalid_pids)
+        {
+          pid_list_size = 0;
+          return;
+        }
+      else
+        {
+          fprintf (stderr, _("%s: missing PID\n"), program_name);
+          print_usage (EXIT_FAILURE);
+        }
     }
 
   pid_list_size = (size_t)(argc - optind);
@@ -265,7 +273,7 @@ ptrace_visit (void)
             {
               fprintf (stderr, _("%s: %ld: no such process\n"),
                        program_name, (long)pid);
-              if  (!allow_invalid_processes)
+              if  (!allow_invalid_pids)
                 exit (EXIT_FAILURE);
               pid_list[i] = -1;
               continue;
@@ -373,7 +381,7 @@ kill_visit (void)
         {
           fprintf (stderr, _("%s: %ld: no such process\n"),
           program_name, (long)pid);
-          if  (!allow_invalid_processes)
+          if  (!allow_invalid_pids)
             exit (EXIT_FAILURE);
           pid_list[i] = -1;
         }
