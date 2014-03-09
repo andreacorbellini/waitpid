@@ -8,80 +8,63 @@
 .fi
 .sp
 ..
-.TH WAITPID 1  "February 2013" "waitpid 0.0.2" "User Commands"
+.TH WAITPID 1  "March 2014" "waitpid 0.2" "User Commands"
 .SH NAME
 waitpid \- wait for process termination
 .SH SYNOPSIS
 .B waitpid
 [\fIOPTION\fR]... \fIPID\fR...
 .SH DESCRIPTION
-.B waitpid
-traces the execution of the processes with the
-given PIDs and exits as soon as all the traced
-processes have terminated.
-.PP
-When the
-.B \-\-verbose
-option is specified,
-.B waitpid
-prints information about the signals received by
-the traced processes and their exit statuses.
-Each line is prefixed by the PID of the process
-which status has changed. Here is an example
-output that could be produced by the command
-``waitpid \-v 5060'':
-.CW
-    5060: attached to process
-    5060: received SIGINT: Interrupt
-    5060: exited with status 0
-.CE
-If instead of exiting normally, the process has
-been killed by a signal, the output would be:
-.CW
-    5060: attached to process
-    5060: killed by SIGKILL
-.CE
-.SH OPTIONS
-.TP 14
-.TP
-\fB\-h\fR, \fB\-\-help\fR
-Display an help message and exit.
-.TP
-\fB\-\-version\fR
-Display version information and exit.
+Wait until all the specified processes have exited.
 .TP
 \fB\-f\fR, \fB\-\-force\fR
-When this option is specified,
-.B waitpid
-won't exit with an error if a given PID cannot be
-traced. (Since 0.0.2)
+do not fail if one of the PID specified does
+not correspond to a running process.
+.TP
+\fB\-s\fR, \fB\-\-sleep\-interval\fR=\fIN\fR
+when
+.BR ptrace (2)
+is not available, check for the existence of the
+processes every
+.I N
+seconds (default: 0.5).
 .TP
 \fB\-v\fR, \fB\-\-verbose\fR
-Print information about status changes of the
-traced processes. Status changes are: a process
-has terminated or a process has been sent a
-signal. (Since 0.0.2)
-.SH "EXIT STATUS"
-.B waitpid
-exits with the same exit status of the traced process.
-When multiple processes are traced,
-.B waitpid
-exits with the same status of the last process
-that has terminated.
+display a message on the standard output every
+time a process exits or receives a signal.
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+display this help and exit
+.TP
+\fB\-\-version\fR
+output version information and exit
 .SH NOTES
-.B waitpid
-makes use of the
+When possible, this program will use the
 .BR ptrace (2)
-system call. On most systems, this call can be
-performed only by the root user. The file
-.B /etc/sysctl.d/10-ptrace.conf
-can be adjusted to modify this behavior.
+system call to wait for programs. With
+.BR ptrace (2)
+the
+.B --sleep-interval
+option is ignored, as events are reported immediately.
+Additionally, if
+.B --verbose
+is specified, the program will display exit
+statuses and signals delivered to the processes.
+
+If
+.BR ptrace (2)
+is not available, processes are checked periodically;
+.B --sleep-interval
+is not ignored and
+.B --verbose
+does not report detailed information about
+exit statuses and signals delivered.
 .SH AUTHOR
 Andrea Corbellini <corbellini.andrea@gmail.com>
 .SH "REPORTING BUGS"
 Report bugs to https://github.com/andrea-corbellini/waitpid
 .SH COPYRIGHT
-Copyright (c) 2012, 2013 Andrea Corbellini. This
+Copyright (c) 2012-2014 Andrea Corbellini. This
 software is released under the GNU GPL version 3
 or later <http://gnu.org/licenses/gpl.html>. This
 is free software: you are free to change and
@@ -89,4 +72,3 @@ redistribute it.  There is NO WARRANTY, to the
 extent permitted by law.
 .SH "SEE ALSO"
 .BR ptrace (2)
-.BR wait (2)

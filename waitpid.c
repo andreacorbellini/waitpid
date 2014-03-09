@@ -1,4 +1,4 @@
-/* waitpid -- wait for process(es) termination
+/* waitpid -- wait for process termination
    Copyright (C) 2012-2014 Andrea Corbellini <corbellini.andrea@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
@@ -110,18 +110,14 @@ print_usage (int status)
       puts (_("\
 \n\
 When possible, this program will use the ptrace(2) system call to\n\
-wait for programs. With ptrace(2), the `--sleep-interval' option is\n\
+wait for programs. With ptrace(2) the `--sleep-interval' option is\n\
 ignored, as events are reported immediately. Additionally, if\n\
 `--verbose' is specified, the program will display exit statuses\n\
 and signals delivered to the processes.\n\
 \n\
 If ptrace(2) is not available, processes are checked periodically;\n\
 `--sleep-interval' is not ignored and `--verbose' does not report\n\
-detailed information about exit statuses and signals delivered.\n\
-\n\
-The program will use ptrace(2) only if the host supports it and if\n\
-the program has the necessary permissions. See `man ptrace' for\n\
-more information."));
+detailed information about exit statuses and signals delivered."));
     }
 
   exit (status);
