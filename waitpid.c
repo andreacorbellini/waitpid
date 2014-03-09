@@ -97,8 +97,9 @@ print_usage (int status)
                       not correspond to a running process."));
       printf(_("\
       -s, --sleep-interval=N\n\
-                      check for the existence of the processes every\n\
-                      N seconds (default: %.1f).\n"),
+                      when ptrace(2) is not available, check for\n\
+                      the existence of the processes every `N'\n\
+                      seconds (default: %.1f).\n"),
              DEFAULT_SLEEP_INTERVAL);
       puts (_("\
       -v, --verbose   display a message on the standard output every\n\
@@ -114,13 +115,13 @@ ignored, as events are reported immediately. Additionally, if\n\
 `--verbose' is specified, the program will display exit statuses\n\
 and signals delivered to the processes.\n\
 \n\
-If ptrace(2) is not available, `--sleep-interval' is not ignored\n\
-and `--verbose' does not report information about exit statuses and\n\
-signals (it just prints a line whenever a process terminates).\n\
+If ptrace(2) is not available, processes are checked periodically;\n\
+`--sleep-interval' is not ignored and `--verbose' does not report\n\
+detailed information about exit statuses and signals delivered.\n\
 \n\
-The program will try to use ptrace(2) only if the host supports it\n\
-and if the program has the necessary permissions. See `man ptrace'\n\
-for more information."));
+The program will use ptrace(2) only if the host supports it and if\n\
+the program has the necessary permissions. See `man ptrace' for\n\
+more information."));
     }
 
   exit (status);
