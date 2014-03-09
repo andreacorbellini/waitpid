@@ -312,6 +312,7 @@ ptrace_visit (void)
         }
 
       printf (_("%ld: waiting\n"), (long)pid);
+      fflush (stdout);
       active_pid_count++;
     }
 
@@ -342,28 +343,37 @@ ptrace_wait (void)
       if (WIFEXITED (status))
         {
           if (verbose)
-            printf (_("%ld: exited with status %d\n"),
-                    (long)pid, WEXITSTATUS (status));
+            {
+              printf (_("%ld: exited with status %d\n"),
+                      (long)pid, WEXITSTATUS (status));
+              fflush (stdout);
+            }
           active_pid_count--;
         }
       else if (WIFSIGNALED (status))
         {
           if (verbose)
-            printf (
+            {
+              printf (
 # ifdef WCOREDUMP
-                    WCOREDUMP (status)
+                      WCOREDUMP (status)
                       ? _("%ld: killed by %s (core dumped)\n")
                       :
 # endif
-                    _("%ld: killed by %s\n"),
-                    (long)pid, signame (WTERMSIG (status)));
+                      _("%ld: killed by %s\n"),
+                      (long)pid, signame (WTERMSIG (status)));
+              fflush (stdout);
+            }
           active_pid_count--;
         }
       else if (WIFSTOPPED (status))
         {
           if (verbose)
-            printf (_("%ld: received %s\n"),
-                    (long)pid, signame (WSTOPSIG (status)));
+            {
+              printf (_("%ld: received %s\n"),
+                      (long)pid, signame (WSTOPSIG (status)));
+              fflush (stdout);
+            }
 
           if (ptrace (PTRACE_CONT, pid, NULL, (void *)(long)WSTOPSIG (status)) < 0)
             {
@@ -405,7 +415,10 @@ kill_visit (void)
       else
         {
           if (verbose)
-            printf (_("%ld: waiting\n"), (long)pid);
+            {
+              printf (_("%ld: waiting\n"), (long)pid);
+              fflush (stdout);
+            }
           active_pid_count++;
         }
     }
@@ -439,7 +452,10 @@ kill_wait (void)
           if (kill (pid, 0) < 0 && errno != EPERM)
             {
               if (verbose)
-                printf (_("%ld: exited\n"), (long)pid);
+                {
+                  printf (_("%ld: exited\n"), (long)pid);
+                  fflush (stdout);
+                }
               active_pid_count--;
               pid_list[i] = 0;
             }
