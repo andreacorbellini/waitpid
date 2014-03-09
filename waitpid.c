@@ -260,7 +260,7 @@ ptrace_visit (void)
       if (pid < 0)
         continue;
 
-      if (ptrace (PTRACE_ATTACH, pid, NULL, NULL) < 0)
+      if (ptrace (PTRACE_SEIZE, pid, NULL, NULL) < 0)
         {
           if (errno == EPERM)
             {
@@ -273,7 +273,9 @@ ptrace_visit (void)
                   if (pid < 0)
                     continue;
 
-                  if (ptrace (PTRACE_DETACH, pid, NULL, NULL) < 0)
+                  if (kill (pid, SIGSTOP) < 0
+                      || waitpid (pid, NULL, 0) < 0
+                      || ptrace (PTRACE_DETACH, pid, NULL, NULL) < 0)
                     {
                       fprintf (stderr,
                                _("%s: %ld: cannot detach from process: %s\n"),
@@ -303,16 +305,12 @@ ptrace_visit (void)
             }
         }
 
-      if (waitpid (pid, NULL, 0) < 0
-          || ptrace (PTRACE_CONT, pid, NULL, NULL) < 0)
+      if (verbose)
         {
-          fprintf (stderr, _("%s: %ld: cannot attach to process: %s\n"),
-                   program_name, (long)pid, strerror (errno));
-          exit (EXIT_FAILURE);
+          printf (_("%ld: waiting\n"), (long)pid);
+          fflush (stdout);
         }
 
-      printf (_("%ld: waiting\n"), (long)pid);
-      fflush (stdout);
       active_pid_count++;
     }
 
