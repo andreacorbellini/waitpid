@@ -8,7 +8,7 @@ AC_CONFIG_SRCDIR([waitpid.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile po/Makefile.in])
 
-AM_INIT_AUTOMAKE([-Wall foreign])
+AM_INIT_AUTOMAKE([-Wall std-options])
 AM_GNU_GETTEXT([external])
 
 # Checks for programs.
@@ -37,6 +37,10 @@ AS_IF([test "x$ac_cv_header_sys_ptrace_h" == "xyes"],
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_PID_T
 AC_TYPE_SIZE_T
+
+if test "x$GCC" = "xyes"; then
+  CFLAGS="$CFLAGS -Wall -pedantic"
+fi
 
 # Checks for library functions.
 
