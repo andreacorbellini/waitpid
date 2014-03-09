@@ -146,7 +146,7 @@ parse_options (int argc, char **argv)
 
   for (;;)
     {
-      c = getopt_long (argc, argv, "fs:vhV", long_options, NULL);
+      c = getopt_long (argc, argv, "fs:vh", long_options, NULL);
 
       if (c == -1)
         break;
@@ -157,7 +157,7 @@ parse_options (int argc, char **argv)
             allow_invalid_pids = true;
             break;
 
-          case 's':
+          case 's': /* --sleep-interval */
             errno = 0;
             sleep_interval = strtod (optarg, &end);
             if (optarg[0] == '\0' || *end != '\0' || errno != 0)
