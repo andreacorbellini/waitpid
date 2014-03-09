@@ -23,11 +23,9 @@ AC_HEADER_STDBOOL
 AC_CHECK_HEADER([getopt.h],,[
     AC_MSG_ERROR([unable to find the getopt.h header])
 ])
-AC_CHECK_HEADERS([sys/types.h sys/wait.h])
+AC_CHECK_HEADERS([sys/wait.h])
 AC_CHECK_HEADERS([sys/ptrace.h],,,
-[#ifdef HAVE_SYS_TYPES_H
-# include <sys/types.h>
-#endif
+[#include <sys/types.h>
 #ifdef HAVE_SYS_WAIT_H
 # include <sys/wait.h>
 #endif])

@@ -16,6 +16,8 @@
 
 #include <config.h>
 
+#include <sys/types.h>
+
 #include <errno.h>
 #include <getopt.h>
 #include <libintl.h>
@@ -26,10 +28,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
-#ifdef HAVE_SYS_TYPES_H
-# include <sys/types.h>
-#endif
 #ifdef HAVE_SYS_WAIT_H
 # include <sys/wait.h>
 #endif
@@ -211,6 +211,10 @@ parse_options (int argc, char **argv)
       exit (EXIT_FAILURE);
     }
 
+  pid_t self;
+
+  self = getpid ();
+
   for (int i = optind; i < argc; i++)
     {
       /* pid_t is signed, but negative PIDs are not valid
@@ -226,6 +230,15 @@ parse_options (int argc, char **argv)
           fprintf (stderr, _("%s: %s: invalid PID\n"),
                    program_name, argv[i]);
           exit (EXIT_FAILURE);
+        }
+
+      if (x == self && false)
+        {
+          fprintf (stderr, _("%s: %s: refusing to trace self\n"),
+                   program_name, argv[i]);
+          if  (!allow_invalid_pids)
+            exit (EXIT_FAILURE);
+          x = -1;
         }
 
       pid_list[i - optind] = (pid_t)x;
