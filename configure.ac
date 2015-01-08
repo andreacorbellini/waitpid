@@ -6,10 +6,9 @@ AC_INIT([waitpid], [0.2], [https://github.com/andrea-corbellini/waitpid])
 
 AC_CONFIG_SRCDIR([waitpid.c])
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile po/Makefile.in])
+AC_CONFIG_FILES([Makefile])
 
 AM_INIT_AUTOMAKE([foreign -Wall std-options])
-AM_GNU_GETTEXT([external])
 
 # Checks for programs.
 AC_PROG_CC

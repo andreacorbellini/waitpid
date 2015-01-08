@@ -41,7 +41,7 @@
 # include <signame.h>
 #endif
 
-#define _(s) gettext (s)
+#define _(s) (s)
 
 /* POSIX states that pid_t is a signed integer type of size no
    greater than the size of long. This is why we are defining

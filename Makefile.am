@@ -6,7 +6,5 @@ waitpid_LDADD = $(LIBINTL)
 DEFS = -DLOCALEDIR=\"$(localedir)\" @DEFS@
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = po
-
 dist_man1_MANS = waitpid.1
 EXTRA_DIST = config.rpath
