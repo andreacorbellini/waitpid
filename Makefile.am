@@ -5,7 +5,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 dist_bin_SCRIPTS = waitall
 dist_man1_MANS = waitpid.1 waitall.1
-EXTRA_DIST = waitall.in
+EXTRA_DIST = README.md waitall.in
 
 # The following has been inspired by the snippet in this page:
 # https://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Installation-Directory-Variables.html
