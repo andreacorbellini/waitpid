@@ -1,0 +1,73 @@
+.de CW
+.sp
+.nf
+.ft CW
+..
+.de CE
+.ft R
+.fi
+.sp
+..
+.TH WAITALL 1  "March 2014" "waitpid 0.2" "User Commands"
+.SH NAME
+waitall \- wait for process termination
+.SH SYNOPSIS
+.B waitall
+[\fIOPTION\fR]... \fIPID\fR...
+.SH DESCRIPTION
+Wait until all the specified programs have exited.
+.TP
+\fB\-o\fR
+omit processes with the specified ID
+.TP
+\fB\-s\fR
+when
+.BR ptrace (2)
+is not available, check for the existence of the processes every
+.I N
+seconds (default: 0.5)
+.TP
+\fB\-v\fR
+display a message on the standard output every time a process exits or receives
+a signal
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+display this help and exit
+.TP
+\fB\-\-version\fR
+output version information and exit
+.SH NOTES
+This program is a wrapper around
+.BR pidof (1)
+and
+.BR waitpid (1).
+Program names and
+.B -o
+options are passed
+.BR pidof (1).
+The
+.B -s
+and
+.B -v
+options are passed to
+.BR waitpid (1).
+
+The exit status of this program depends on the exit statuses of
+both
+.BR pidof (1)
+and
+.BR waitpid (1).
+.SH AUTHOR
+Written by Andrea Corbellini <corbellini.andrea@gmail.com>.
+.SH "REPORTING BUGS"
+Report bugs to https://github.com/andrea-corbellini/waitpid
+.SH COPYRIGHT
+Copyright (c) 2012-2014 Andrea Corbellini. This
+software is released under the GNU GPL version 3
+or later <http://gnu.org/licenses/gpl.html>. This
+is free software: you are free to change and
+redistribute it.  There is NO WARRANTY, to the
+extent permitted by law.
+.SH "SEE ALSO"
+.BR pidof (1),
+.BR waitpid (1)
