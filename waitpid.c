@@ -84,7 +84,7 @@ static void
 print_usage (int status)
 {
   if (status != EXIT_SUCCESS)
-    fprintf (stderr, _("Try `%s --help' for more information\n"),
+    fprintf (stderr, _("Try '%s --help' for more information.\n"),
              program_name);
   else
     {
@@ -93,31 +93,30 @@ print_usage (int status)
       puts (_("Wait until all the specified processes have exited.\n"));
 
       puts (_("\
-      -f, --force     do not fail if one of the PID specified does\n\
-                      not correspond to a running process."));
+      -f, --force     do not fail if one of the PID specified does not\n\
+                      correspond to a running process"));
       printf(_("\
       -s, --sleep-interval=N\n\
-                      when ptrace(2) is not available, check for\n\
-                      the existence of the processes every `N'\n\
-                      seconds (default: %.1f).\n"),
+                      when ptrace(2) is not available, check for the\n\
+                      existence of the processes every N seconds\n\
+                      (default: %.1f)\n"),
              DEFAULT_SLEEP_INTERVAL);
       puts (_("\
-      -v, --verbose   display a message on the standard output every\n\
-                      time a process exits or receives a signal.\n\
+      -v, --verbose   display a message on the standard output everytime a\n\
+                      process exits or receives a signal\n\
       -h, --help      display this help and exit\n\
           --version   output version information and exit"));
 
       puts (_("\
 \n\
-When possible, this program will use the ptrace(2) system call to\n\
-wait for programs. With ptrace(2) the `--sleep-interval' option is\n\
-ignored, as events are reported immediately. Additionally, if\n\
-`--verbose' is specified, the program will display exit statuses\n\
-and signals delivered to the processes.\n\
+When possible, this program will use the ptrace(2) system call to wait for\n\
+programs. With ptrace(2) the '--sleep-interval' option is ignored, as events\n\
+are reported immediately. Additionally, if '--verbose' is specified, the\n\
+program will display exit statuses and signals received by the processes.\n\
 \n\
-If ptrace(2) is not available, processes are checked periodically;\n\
-`--sleep-interval' is not ignored and `--verbose' does not report\n\
-detailed information about exit statuses and signals delivered."));
+If ptrace(2) is not available, processes are checked periodically,\n\
+'--sleep-interval' is not ignored and '--verbose' does not report detailed\n\
+information about exit statuses and signals received."));
     }
 
   exit (status);
