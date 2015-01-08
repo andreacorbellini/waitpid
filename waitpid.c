@@ -451,7 +451,7 @@ kill_wait (void)
                   fflush (stdout);
                 }
               active_pid_count--;
-              pid_list[i] = 0;
+              pid_list[i] = -1;
             }
         }
     }
