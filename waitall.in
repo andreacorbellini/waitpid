@@ -1,0 +1,93 @@
+#!/bin/bash
+
+set -e
+
+pidof_opts=()
+waitpid_opts=("-f")
+program_names=()
+
+for opt in "$@"
+do
+  if [[ "$opt" == "-h" || "$opt" == "--help" ]]
+  then
+    echo "Usage: $0 [OPTION]... PROGRAM-NAME..."
+    echo "Wait until all the specified programs have exited."
+    echo
+    echo "      -o PID  omit processes with the specified ID"
+    echo "      -s N    when ptrace(2) is not available, check"
+    echo "              for the existence of the processes"
+    echo "              every N seconds (default: 0.5)"
+    echo "      -v      display a message on the standard output"
+    echo "              everytime a process exits or receives a signal"
+    echo "      -h, --help"
+    echo "              display this help and exit"
+    echo "      --version"
+    echo "              output version information and exit"
+    echo
+    echo "This program is a wrapper around pidof(1) and waitpid(1). Program"
+    echo "names and '-o' options are passed pidof(1). The '-s' and '-v'"
+    echo "options are passed to waitpid(1)."
+    echo
+    echo "The exit status of this program depends on the exit statuses of"
+    echo "both pidof(1) and waitpid(1)."
+
+    exit 0
+  fi
+
+  if [[ "$opt" == "--version" ]]
+  then
+    echo "@PACKAGE_STRING@"
+    exit 0
+  fi
+done
+
+while [[ $# -gt 0 ]]
+do
+  OPTIND=1
+
+  while getopts "o:s:vx" opt
+  do
+    case $opt in
+      o)
+        pidof_opts+=("-o" "$OPTARG")
+      ;;
+      s)
+        waitpid_opts+=("-s" "$OPTARG")
+      ;;
+      v)
+        waitpid_opts+=("-v")
+      ;;
+      x)
+        pidof_opts+=("-x")
+      ;;
+      ?)
+        # getopts has already printed an error message.
+        exit 1
+      ;;
+    esac
+  done
+
+  if [[ "${@:OPTIND-1:1}" = "--" ]]
+  then
+    program_names+=("${@:OPTIND}")
+    break
+  fi
+
+  shift $(( $OPTIND - 1 ))
+
+  if [[ $# -gt 0 ]]
+  then
+    program_names+=("$1")
+    shift
+  fi
+done
+
+if [[ "${#program_names[@]}" == 0 ]]
+then
+  echo "$0: missing program name" >&2
+  echo "Try '$0 --help' for more information." >&2
+  exit 1
+fi
+
+pids="$(pidof "${pidof_opts[@]}" -- "${program_names[@]}")"
+"@bindir@/waitpid" "${waitpid_opts[@]}" -- $pids
