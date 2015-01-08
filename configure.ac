@@ -8,7 +8,7 @@ AC_CONFIG_SRCDIR([waitpid.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile po/Makefile.in])
 
-AM_INIT_AUTOMAKE([-Wall std-options])
+AM_INIT_AUTOMAKE([foreign -Wall std-options])
 AM_GNU_GETTEXT([external])
 
 # Checks for programs.
