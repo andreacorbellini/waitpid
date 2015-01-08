@@ -469,6 +469,11 @@ main (int argc, char **argv)
     ptrace_wait ();
   else
     {
+      if (verbose)
+        {
+          fprintf (stderr, _("%s: unable to ptrace(2): %s\n"),
+                   program_name, strerror (errno));
+        }
       kill_visit ();
       kill_wait ();
     }
