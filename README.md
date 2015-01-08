@@ -1,8 +1,8 @@
 # waitpid
 
-This package is a simple utility program traces the execution of the processes
-with the given PIDs and exits as soon as all the traced processes have
-terminated.
+This package is a simple utility that traces the execution of the specified
+processes and exits as soon as they have terminated. Optionally, it may report
+details about exit statuses and signals.
 
 This package comes with two programs: **waitpid** and **waitall**. The first
 can be used to wait for the specified PIDs, the latter can be used to wait for
