@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([waitpid], [0.2], [https://github.com/andrea-corbellini/waitpid])
+AC_INIT([waitpid], [0.3], [https://github.com/andrea-corbellini/waitpid])
 
 AC_CONFIG_SRCDIR([waitpid.c])
 AC_CONFIG_HEADERS([config.h])
