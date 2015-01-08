@@ -20,7 +20,6 @@
 
 #include <errno.h>
 #include <getopt.h>
-#include <libintl.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -462,10 +461,6 @@ kill_wait (void)
 int
 main (int argc, char **argv)
 {
-  setlocale (LC_ALL, "");
-  bindtextdomain (PACKAGE, LOCALEDIR);
-  textdomain (PACKAGE);
-
   parse_options (argc, argv);
 
   if (ptrace_visit () == 0)

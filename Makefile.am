@@ -1,9 +1,6 @@
 bin_PROGRAMS = waitpid
 waitpid_SOURCES = waitpid.c signame.h
 
-waitpid_LDADD = $(LIBINTL)
-
-DEFS = -DLOCALEDIR=\"$(localedir)\" @DEFS@
 ACLOCAL_AMFLAGS = -I m4
 
 dist_bin_SCRIPTS = waitall
