@@ -268,7 +268,7 @@ ptrace_visit (void)
                   if (pid < 0)
                     continue;
 
-                  if (kill (pid, SIGSTOP) < 0
+                  if (ptrace (PTRACE_INTERRUPT, pid, NULL, NULL) < 0
                       || waitpid (pid, NULL, 0) < 0
                       || ptrace (PTRACE_DETACH, pid, NULL, NULL) < 0)
                     {
