@@ -272,11 +272,14 @@ ptrace_visit (void)
                       || waitpid (pid, NULL, 0) < 0
                       || ptrace (PTRACE_DETACH, pid, NULL, NULL) < 0)
                     {
-                      fprintf (stderr,
-                               _("%s: %ld: cannot detach from process: %s\n"),
-                               program_name, (long)pid,
-                               strerror (errno));
-                      exit (EXIT_FAILURE);
+                      /* ESRCH (No such process) may be returned when doing
+                         PTRACE_DETACH if the process exited in the meantime. */
+                      if (errno != ESRCH)
+                        {
+                          fprintf (stderr, _("%s: %ld: cannot detach from process: %s\n"),
+                                   program_name, (long)pid, strerror (errno));
+                          exit (EXIT_FAILURE);
+                        }
                     }
                 }
 
