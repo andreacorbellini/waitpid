@@ -227,7 +227,7 @@ parse_options (int argc, char **argv)
           exit (EXIT_FAILURE);
         }
 
-      if (x == self && false)
+      if (x == self)
         {
           fprintf (stderr, _("%s: %s: refusing to trace self\n"),
                    program_name, argv[i]);
