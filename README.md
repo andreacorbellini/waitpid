@@ -32,6 +32,4 @@ processes with the specified names.
 
 **Homepage:** https://github.com/andrea-corbellini/waitpid
 
-**Get the source:** `git clone git://github.com/andrea-corbellini/waitpid.git`
-
-**Build it:** `./autogen.sh && ./configure && make`
+**Build:** `./configure && make`
