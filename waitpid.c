@@ -469,13 +469,14 @@ main (int argc, char **argv)
   parse_options (argc, argv);
 
   if (ptrace_visit () == 0)
-    ptrace_wait ();
+    {
+      ptrace_wait ();
+    }
   else
     {
       if (verbose)
         {
-          fprintf (stderr, _("%s: unable to ptrace(2): %s\n"),
-                   program_name, strerror (errno));
+          fprintf (stderr, _("%s: unable to trace processes\n"), program_name);
         }
       kill_visit ();
       kill_wait ();
