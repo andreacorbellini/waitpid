@@ -1,3 +1,15 @@
+* Release 0.3 (2015-01-11)
+
+  * Added a new ‘waitall’ program that lets you specify programs by name,
+    rather than by PID (this is similar to what killall(1) does).
+
+  * Switched from the GNU GPL v3 license to the BSD 2-clause license.
+
+  * Minor changes:
+
+    - The ‘--verbose’ option displays a warning if ptrace(2) is not available.
+
+
 * Release 0.2 (2014-03-09)
 
   * Added support for waiting multiple PIDs.
